@@ -193,6 +193,21 @@ class CarPlayController(
         runCatching { appContext.getSystemService(BluetoothManager::class.java)?.adapter }
             .getOrNull() ?: runCatching { BluetoothAdapter.getDefaultAdapter() }.getOrNull()
 
+    /**
+     * 厂商 AnwPhoneLink 蓝牙桥接候选（原生 framework 蓝牙缺失时的回落后端）。
+     * 探针失败或服务不可达时为不可用，不影响原生路径。
+     */
+    private val wirelessVendorBridge: com.shilapi.xcertplay.bluetooth.CarPlayBluetooth? by lazy {
+        runCatching {
+            com.shilapi.xcertplay.bluetooth.AnwPhoneLinkWiring.vendorCandidate(
+                com.shilapi.xcertplay.bluetooth.AndroidAnwServiceProbe(appContext),
+            )
+        }.getOrNull()
+    }
+
+    private fun wirelessVendorBridgeUsable(): Boolean =
+        runCatching { wirelessVendorBridge?.isSupported() == true }.getOrDefault(false)
+
     private fun awaitBluetoothEnabled(adapter: BluetoothAdapter, timeoutMillis: Long = 3_000L): Boolean {
         if (adapter.isEnabled) return true
         val deadline = SystemClock.elapsedRealtime() + timeoutMillis
@@ -1302,11 +1317,15 @@ class CarPlayController(
                 awaitBluetoothEnabled(initialAdapter, timeoutMillis = 3_000L)
             }
             val activeAdapter = currentBluetoothAdapter()
-            BluetoothRadioCheck.blockerForState(
-                adapterPresent = activeAdapter != null,
-                state = activeAdapter?.state,
-                pausedByDiPlay = BydBluetoothSuspend.isSuspendedByUs(appContext),
-            )?.let { throw BluetoothRadioCheck.failure(it) }
+            if (activeAdapter != null || !wirelessVendorBridgeUsable()) {
+                BluetoothRadioCheck.blockerForState(
+                    adapterPresent = activeAdapter != null,
+                    state = activeAdapter?.state,
+                    pausedByDiPlay = BydBluetoothSuspend.isSuspendedByUs(appContext),
+                )?.let { throw BluetoothRadioCheck.failure(it) }
+            } else {
+                debugLog("wireless bluetooth via the AnwPhoneLink vendor bridge")
+            }
             val hotspotInfo = startWirelessHotspot(generation)
             if (isStaleWirelessRun(generation)) {
                 return
@@ -1386,18 +1405,32 @@ class CarPlayController(
             onStatus(CarPlayStatus.WaitingForPairedIphone)
 
             val adapter = currentBluetoothAdapter()
-                ?: throw BluetoothRadioCheck.failure(BluetoothRadioCheck.NO_ADAPTER)
-            val bluetoothRecoveryComplete = BydBluetoothSuspend.resumeAndWait(appContext, adapter)
-            if (adapter.state == BluetoothAdapter.STATE_TURNING_ON) {
-                awaitBluetoothEnabled(adapter, timeoutMillis = 3_000L)
+            val vendorBridge = if (adapter == null) {
+                runCatching { wirelessVendorBridge?.takeIf { it.isSupported() } }.getOrNull()
+            } else {
+                null
             }
-            if (!adapter.isEnabled) throw IOException(BluetoothRadioCheck.RADIO_OFF)
-            if (!bluetoothRecoveryComplete) throw IOException("Bluetooth recovery did not complete before the handshake")
-            val device = selectWirelessBluetoothDevice(adapter)
-            val hostBluetoothMac = accessoryBluetoothMac(adapter)
+            if (adapter == null && vendorBridge == null) {
+                throw BluetoothRadioCheck.failure(BluetoothRadioCheck.NO_ADAPTER)
+            }
+            if (adapter != null) {
+                val bluetoothRecoveryComplete = BydBluetoothSuspend.resumeAndWait(appContext, adapter)
+                if (adapter.state == BluetoothAdapter.STATE_TURNING_ON) {
+                    awaitBluetoothEnabled(adapter, timeoutMillis = 3_000L)
+                }
+                if (!adapter.isEnabled) throw IOException(BluetoothRadioCheck.RADIO_OFF)
+                if (!bluetoothRecoveryComplete) throw IOException("Bluetooth recovery did not complete before the handshake")
+            }
+            val device = adapter?.let { selectWirelessBluetoothDevice(it) }
+            val vendorTarget = vendorBridge?.let {
+                com.shilapi.xcertplay.bluetooth.selectVendorWirelessTarget(it, config.wirelessBluetoothDeviceAddress)
+            }
+            val hostBluetoothMac = adapter?.let { accessoryBluetoothMac(it) }
+                ?: vendorBridge?.localAddress()
+                ?: "02:00:00:00:00:00"
             debugLog(
-                "wireless selected Bluetooth target name=${device.name ?: "unknown"} " +
-                    "address=${device.address} localBt=$hostBluetoothMac",
+                "wireless selected Bluetooth target name=${device?.name ?: vendorTarget?.name ?: "unknown"} " +
+                    "address=${device?.address ?: vendorTarget?.address} localBt=$hostBluetoothMac",
             )
             val wirelessAirPlayConfig = airPlayConfig.copy(
                 deviceId = deviceIdentifier,
@@ -1469,52 +1502,67 @@ class CarPlayController(
             }
 
             onStatus(CarPlayStatus.ConnectingBluetooth)
+            val targetAddress = device?.address ?: vendorTarget?.address
             debugLog(
-                "wireless RFCOMM connecting address=${device.address} " +
+                "wireless RFCOMM connecting address=$targetAddress " +
                     "uuid=$IAP2_IPHONE_UUID",
             )
-            val socket = synchronized(wirelessResourceLock) {
-                if (isStaleWirelessRun(generation)) return
-                device.createRfcommSocketToServiceRecord(UUID.fromString(IAP2_IPHONE_UUID))
-                    .also { bluetoothSocket = it }
-            }
-            logBluetoothConnectionSnapshot(device, "before-connect")
-            val bluetoothStarted = System.nanoTime()
+            val wirelessStream: com.shilapi.xcertplay.transport.BlockingDuplexByteStream
             val bluetoothConnectMillis: Long
-            try {
-                connectBluetoothSocket(socket, device.address)
-                bluetoothConnectMillis = elapsedMillis(bluetoothStarted)
-                connectionDiagnostic("Bluetooth connect completed elapsedMs=$bluetoothConnectMillis " +
-                    "socketReportedConnected=${runCatching { socket.isConnected }.getOrNull() ?: "unknown"}")
-            } catch (error: Throwable) {
-                connectionDiagnostic(
-                    "Bluetooth connect failed elapsedMs=${elapsedMillis(bluetoothStarted)} " +
-                        "failureClass=${diagnosticFailureClass(error)}",
-                )
-                logBluetoothConnectionSnapshot(device, "after-failure")
-                throw error
-            }
-            debugLog("wireless RFCOMM connected address=${device.address}")
-            logBluetoothConnectionSnapshot(device, "after-connect")
-            if (isStaleWirelessRun(generation)) {
-                return
-            }
-            val stream = synchronized(wirelessResourceLock) {
-                if (isStaleWirelessRun(generation)) return
+            if (vendorBridge != null && device == null) {
+                // Vendor AnwPhoneLink bridge: the byte stream comes from the vendor socket;
+                // no framework BluetoothDevice/socket exists on this path.
+                val vendorStream = synchronized(wirelessResourceLock) {
+                    if (isStaleWirelessRun(generation)) return
+                    vendorBridge.openRfcommStream(targetAddress!!, IAP2_IPHONE_UUID)
+                }
+                bluetoothConnectMillis = 0L
+                wirelessStream = vendorStream
+            } else {
+                val socket = synchronized(wirelessResourceLock) {
+                    if (isStaleWirelessRun(generation)) return
+                    device!!.createRfcommSocketToServiceRecord(UUID.fromString(IAP2_IPHONE_UUID))
+                        .also { bluetoothSocket = it }
+                }
+                val nativeDevice = device!!
+                logBluetoothConnectionSnapshot(nativeDevice, "before-connect")
+                val bluetoothStarted = System.nanoTime()
                 try {
-                    BluetoothRfcommDuplexStream(socket, ::connectionDiagnostic).also { bluetoothStream = it }
-                } finally {
-                    // The stream owns the connected socket and also closes it if stream getters
-                    // fail. Do not retain a second socket owner in bootstrap teardown.
-                    if (bluetoothSocket === socket) bluetoothSocket = null
+                    connectBluetoothSocket(socket, nativeDevice.address)
+                    bluetoothConnectMillis = elapsedMillis(bluetoothStarted)
+                    connectionDiagnostic("Bluetooth connect completed elapsedMs=$bluetoothConnectMillis " +
+                        "socketReportedConnected=${runCatching { socket.isConnected }.getOrNull() ?: "unknown"}")
+                } catch (error: Throwable) {
+                    connectionDiagnostic(
+                        "Bluetooth connect failed elapsedMs=${elapsedMillis(bluetoothStarted)} " +
+                            "failureClass=${diagnosticFailureClass(error)}",
+                    )
+                    logBluetoothConnectionSnapshot(nativeDevice, "after-failure")
+                    throw error
+                }
+                debugLog("wireless RFCOMM connected address=${device.address}")
+                logBluetoothConnectionSnapshot(nativeDevice, "after-connect")
+                if (isStaleWirelessRun(generation)) {
+                    return
+                }
+                wirelessStream = synchronized(wirelessResourceLock) {
+                    if (isStaleWirelessRun(generation)) return
+                    try {
+                        BluetoothRfcommDuplexStream(socket, ::connectionDiagnostic).also { bluetoothStream = it }
+                    } finally {
+                        // The stream owns the connected socket and also closes it if stream getters
+                        // fail. Do not retain a second socket owner in bootstrap teardown.
+                        if (bluetoothSocket === socket) bluetoothSocket = null
+                    }
+                }
+                if (BluetoothLinkCheck.looksUnreal(bluetoothConnectMillis, 0L)) {
+                    InstantBluetoothLink(generation, nativeDevice, wirelessStream, bluetoothConnectMillis).also {
+                        instantBluetoothLink = it
+                        watchForUnrealBluetooth(it)
+                    }
                 }
             }
-            if (BluetoothLinkCheck.looksUnreal(bluetoothConnectMillis, 0L)) {
-                InstantBluetoothLink(generation, device, stream, bluetoothConnectMillis).also {
-                    instantBluetoothLink = it
-                    watchForUnrealBluetooth(it)
-                }
-            }
+            val stream = wirelessStream
             val channel = Iap2Session.openWireless(
                 stream,
                 traceContext = "wireless-rfcomm",

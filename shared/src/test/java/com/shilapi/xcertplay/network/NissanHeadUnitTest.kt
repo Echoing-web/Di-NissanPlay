@@ -8,46 +8,39 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowBuild
 
-/**
- * The Nissan Connect detection matches only identifiers that say Nissan. The default
- * Robolectric build, BYD units and the measured Geely unit stay undetected, so no Nissan
- * route can turn on for them.
- */
+/** 日产识别只匹配明确的 Nissan 标识，其他车机不得误开日产专用路径。 */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [29], manifest = Config.NONE)
 class NissanHeadUnitTest {
 
     @Test
     fun defaultRobolectricBuildIsNotDetected() {
-        assertFalse(NissanHeadUnit.detected)
+        assertFalse(NissanHeadUnit.matchesIdentifiers(emptyList()))
     }
 
     @Test
     fun nissanManufacturerIsDetected() {
-        ShadowBuild.setManufacturer("NISSAN MOTOR CO., LTD.")
-        assertTrue(NissanHeadUnit.detected)
+        assertTrue(NissanHeadUnit.matchesIdentifiers(listOf("NISSAN MOTOR CO., LTD.")))
     }
 
     @Test
     fun nissanBrandIsDetected() {
-        ShadowBuild.setBrand("nissan")
-        assertTrue(NissanHeadUnit.detected)
+        assertTrue(NissanHeadUnit.matchesIdentifiers(listOf("nissan")))
     }
 
     @Test
     fun bydUnitIsNotDetected() {
-        ShadowBuild.setManufacturer("BYD AUTO")
-        ShadowBuild.setProduct("DiLink4")
-        ShadowBuild.setModel("BYD Seal")
-        assertFalse(NissanHeadUnit.detected)
+        assertFalse(NissanHeadUnit.matchesIdentifiers(listOf("BYD AUTO", "DiLink4", "BYD Seal")))
     }
 
     @Test
     fun geelyUnitIsNotDetected() {
-        ShadowBuild.setDevice("msmnile_gvmq")
-        ShadowBuild.setProduct("geely_fx11")
-        ShadowBuild.setModel("CS11_A4")
-        ShadowBuild.setManufacturer("QUALCOMM")
-        assertFalse(NissanHeadUnit.detected)
+        assertFalse(NissanHeadUnit.matchesIdentifiers(listOf("msmnile_gvmq", "geely_fx11", "CS11_A4", "QUALCOMM")))
+    }
+
+    @Test
+    fun detectedReadsCurrentBuildFields() {
+        ShadowBuild.setManufacturer("NISSAN MOTOR CO., LTD.")
+        assertTrue(NissanHeadUnit.detected)
     }
 }

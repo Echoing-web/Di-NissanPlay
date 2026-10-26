@@ -18,6 +18,9 @@ captures/
 # Local agent working notes
 /agent_docs/
 
+# Mimosa security-scan working state
+.mimosa/
+
 # OS files
 .DS_Store
 Thumbs.db

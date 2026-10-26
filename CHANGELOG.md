@@ -1,3 +1,21 @@
+# Di-NissanPlay 0.2.21-nissan.1 — 2026-10-26
+
+本条目起为日产天籁 fork(`feat/nissan-teana-adaptation`)的版本记录,基线为上游 DiPlay 0.2.21;上游版本记录见下方英文条目。
+
+新增:
+
+- 日产超智联车机识别(`NissanHeadUnit`):按系统标识判断目标车机,日产专属功能只在识别成功时渲染,其他设备行为与上游完全一致;识别结果按次访问重算,避免读到过期的 Build 快照。
+- 一键诊断链路:`getprop` / `wm size` / `wm density` / `dumpsys display` 四条只读命令白名单采集,10 秒单命令超时,解析为 15 行 key=value 诊断报告,全程保留转录;设置页新增诊断卡片,三分支对话框(报告复制 / 重新采集提示 / 拒绝说明),带防重入与销毁守卫;全部语言 strings 同步。
+- AnwPhoneLink 蓝牙桥接:天籁 NTDA3 家族车机蓝牙在 MCU 后、系统层不可见,导致无线 CarPlay 必败;新增"原生优先 → 厂商回落"策略,系统蓝牙存在时原生路径零变化,不可用时经厂商 AIDL 服务(`com/anwsdk`)桥接。
+- 文档体系:PRD、SDD、BDD、独立验收材料、蓝牙根因调研、解析器 worklog/交接、车主诊断指南、8 张布局与端到端实证截图。
+
+修复:
+
+- 诊断真实命令执行器的 API 24 兼容问题(实机最低支持 Android 7.0)。
+- 测试样本中的传闻规格值(1280x720/NTDA3)只保留在测试资源,不进运行时代码。
+
+验证:shared 269 类 / 1786 用例 0 失败;common 除 4 个 POSIX sh 环境性失败与 1 个已归档 flaky 外全绿;新增代码 lint 零命中。实车验收未完成,待实车 ADB 转录(见 `docs/NISSAN_TEANA_ACCEPTANCE.md`)。
+
 # DiPlay 0.2.21 — 2026-10-17
 
 - Fix the 0.2.20 music lag by counting the music still waiting to be decoded in the clock adjustment, and bring music back after an interruption when the iPhone plays again (#814, #804).

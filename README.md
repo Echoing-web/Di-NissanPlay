@@ -1,67 +1,92 @@
-# DiPlay
+本项目基于 [DiPlay](https://github.com/shihabal3amri/DiPlay) 进行开发。
 
-[English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
+# Di-NissanPlay — 2021 款日产天籁 CarPlay 适配
 
-**CarPlay for compatible BYD Android head units.** Wired and wireless, with the familiar DiAuto interface. Independent app: `com.shihab.diplay`.
+Di-NissanPlay 是 [DiPlay](https://github.com/shihabal3amri/DiPlay) 的衍生项目。DiPlay 是把 iPhone 的 CarPlay 画面和声音投到安卓车机上的开源方案,原本主要针对比亚迪 DiLink 车机;本 fork 在**完整保留 DiPlay 全部功能**(基线上游 0.2.21)的基础上,针对**2021 款日产天籁 2.0T 的超智联车机**(中国市场第七代 Altima,2019–2023 同族车机思路通用)做了适配开发。
 
-> **BYD support scope:** These projects focus on BYD cars. They may work on other brands, but other brands are unsupported and there are no plans to add support or fix brand-specific incompatibilities.
+上游原版 README:[English](docs/UPSTREAM_README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
-[Download & website](https://shihabal3amri.github.io/DiPlay/) · [Release](https://github.com/shihabal3amri/DiPlay/releases/tag/v0.2.21) · [Report a problem](https://github.com/shihabal3amri/DiPlay/issues/new/choose)
+## 我们开发了什么
 
-![DiPlay home](site/assets/home.png)
+### 1. 日产车机自动识别
+通过系统标识(`ro.product.*` 等)自动判断当前车机是不是日产超智联。
+识别成功才显示日产专属功能;在其他任何设备上,本项目和原版 DiPlay 表现完全一致。
 
-## 0.2.21 — public preview
+### 2. 一键诊断(给车主和开发者排障用)
+- 位置:**设置 → 诊断 → 「保存诊断报告」卡片 → 日产诊断按钮**(仅日产车机可见)
+- 点一下,应用自动执行 4 条**只读**命令:`getprop`、`wm size`、`wm density`、`dumpsys display`
+- 输出一份 15 行的诊断报告,**长按即可复制**,粘贴给开发者即可定位车机型号和屏幕参数
+- 安全约定:命令白名单之外的任何命令(包括拼接变体)一律不执行;每条 10 秒超时;报告不含协议数据、凭据或个人信息
 
-Install on the **car**, not the iPhone. No jailbreak, dongle, Mac, account or authentication server is required for use. Core CarPlay does not require ADB; optional dashboard, battery, wheel-speed and parked-video features do. Your head unit must permit APK installation. The APK supports Android 7.0+ (API 24); Android 7.0–8.1 support is not yet confirmed on a vehicle. Wireless supports Wi-Fi Direct, the car’s existing hotspot or Existing Wi-Fi / Same LAN. Android 7.0–9 Wi-Fi Direct uses a firmware-dependent legacy path with generated group credentials and unverified requested frequency; see [Android 9 Wi-Fi Direct](docs/ANDROID9_WIFI_DIRECT.md). Android 10+ verifies its negotiated group frequency.
+### 3. AnwPhoneLink 蓝牙桥接(无线 CarPlay 的关键)
+天籁超智联车机的蓝牙硬件挂在 MCU 后面,Android 系统里根本看不到蓝牙适配器,
+所以原版 DiPlay 的无线 CarPlay 在这台车上**必然失败**。本 fork 增加"原生优先 → 厂商回落"策略:
 
-- Wired USB and wireless CarPlay with local authentication.
-- BYD HUD navigation with arrows, distance and street names on verified firmware.
-- Car hotspot support, improved audio buffering and saved receive diagnostics.
-- Automatic address discovery, fixed-channel Wi-Fi fallbacks and successful-configuration memory.
-- Icon/text size, resolution and frame rate; applying a display change reconnects CarPlay.
-- Local diagnostic export. Reports are sent only if you choose to share them.
-- Separate installation alongside DiAuto. Run one projection app at a time.
+- 系统蓝牙正常时:行为与上游 DiPlay 完全一致,一行代码不多走
+- 系统蓝牙不可用但车机自带 AnwPhoneLink 厂商服务时:自动改走厂商桥接,无线 CarPlay 得以继续
 
-This is **not an Apple-certified product**. The APK bundles an experimental accessory identity recovered from public Carlinkit firmware, not a newly provisioned MFi identity for DiPlay. A bundled private key is extractable. Acceptance after future iOS updates, reliability across head units and suitability of that identity for general distribution are unresolved. This release invites community testing; it is not a guarantee of universal compatibility.
+### 4. 继承 DiPlay 的全部既有能力
+有线/无线 CarPlay、音乐与导航音频、方向盘按键、仪表投显、诊断报告导出、多语言设置等,全部来自上游 0.2.21,没有裁剪。
 
-Earlier releases were tested on the development DiLink5.1 car: live windshield guidance and street names work, Car hotspot now starts CarPlay, and Wi-Fi Direct performance is substantially improved. Audio underrun recovery is improved in 0.2.15; remaining cutouts need current diagnostic reports. The 0.2.16 software Opus microphone fallback was accepted on a BOS Mini A1 head unit (Android 9) with an iPhone 12 on iOS 27. The floating-map test build was installed on the development DiLink 5.1 car; feedback led to the pinch corrections in 0.2.9. Earlier wheel-speed and video contributions were tested on a BYD Tang with DiLink 5.0 and an iPhone 15 Pro on iOS 27; wheel-speed dead reckoning in tunnels remains unverified. Broader head-unit and iOS compatibility is not guaranteed. The HUD firmware scope and cleanup limits are documented in [BYD navigation](docs/BYD_NAVIGATION.md).
+## 使用场景
 
-## What’s new in 0.2.21
+| 场景 | 说明 |
+| --- | --- |
+| 有线 CarPlay | iPhone 数据线插车机 USB 口,即插即用 |
+| 无线 CarPlay | 蓝牙桥接 + Wi-Fi Direct,上车自动连接(天籁必须走桥接) |
+| 车机排障 | 一键诊断生成报告,发给开发者,不用口头描述车机型号 |
 
-- Music plays in step with the iPhone again: on 0.2.20, pause, skip and track changes could come seconds late, and the speed could wobble.
-- Wired CarPlay recovers by itself when the iPhone never opens CarPlay, no longer waits forever after **Disconnect**, and keeps a connection that has already recovered.
-- DiPlay no longer closes when the microphone is used on head units without Android's own Opus encoder, and music comes back after a call or a short interruption.
-- Wireless CarPlay says why it cannot start; on BYD head units the dashboard is handed back to the car when CarPlay ends, and DiPlay no longer closes from the DiYou desktop card.
-- DiPlay installs on Android 7.0 and is available in Italian.
-- New options, off by default: temporary system bars, black rounded corners, a play/pause wheel key, double press for Siri, importing the car hotspot details, a home-screen bubble and the car's own music rhythm.
+## 操作步骤(Steps)
 
-See [0.2.21 release notes](docs/RELEASE-NOTES-0.2.21.md) and [validation](docs/VALIDATION.md) for contribution links and remaining physical tests. General stutter, calls/Siri, decoder and model-specific reports still need current-device evidence. [0.2.20 notes](docs/RELEASE-NOTES-0.2.20.md) remain available as historical guidance.
+**Step 1 — 把 APK 装进车机**
+用 U 盘拷贝安装,或者电脑连车机后执行 `adb install Di-NissanPlay.apk`。
 
-If a problem remains, reproduce it on **0.2.21**, then use **Settings → Diagnostics → Save diagnostic report**. Android 10+ normally saves to **Downloads/DiPlay**; Android 7.0–9 asks for storage access and saves there too. If unavailable, use **View report** or **Share** from the confirmation, which identifies external/private fallback storage. Review the `.txt` and add it to a matching [existing issue](https://github.com/shihabal3amri/DiPlay/issues), or [create one](https://github.com/shihabal3amri/DiPlay/issues/new/choose). Include vehicle/head-unit model, exact firmware and Android/DiLink, phone/iOS, connection backend, relevant settings, steps and failure time. Reports are shared only when you choose; never post your hotspot password.
+**Step 2 — 打开应用**
+安装后如果桌面看不到图标,不是安装失败,是原厂桌面只显示白名单应用。
+用 ADB 直接启动即可:
+`adb shell am start -n com.shihab.diplay.hudtest/com.shilapi.xcertplay.DiPlayActivity`
+(也可以安装第三方桌面作为日常入口,社区有车主这样用)
 
-## Documentation
+**Step 3 — 首次授权**
+按应用内引导,把 USB、附近设备、位置等权限给齐。
 
-[Existing Wi-Fi / Same LAN](docs/EXISTING_WIFI.md) keeps the iPhone and head unit
-on an external router. See the guide for setup, build requirements and the
-BYD DiLink 4.0 / Android 10 clean-install validation result.
+**Step 4 — 连接 iPhone**
+- 有线:iPhone 插线,点连接,等 CarPlay 画面出现即可
+- 无线:确认 iPhone 的蓝牙和 Wi-Fi 都开着,按引导走无线连接;车机侧蓝牙由 Anw 桥接自动接管,你不需要额外操作
 
-- [Install and connect](docs/INSTALL.md)
-- [Compatibility and troubleshooting](docs/COMPATIBILITY.md)
-- [Smooth wireless CarPlay](docs/SMOOTH_WIRELESS.md)
-- [Privacy and diagnostic reports](docs/PRIVACY.md)
-- [Build from source](docs/BUILD.md) — select `mobile` for the main DiPlay app; `maphost` is a map sample.
-- [Validation](docs/VALIDATION.md)
-- [Release notes](CHANGELOG.md)
-- [Credits and licenses](docs/THIRD_PARTY_NOTICES.md)
+**Step 5 — 出问题了?一键诊断**
+设置 → 诊断 → 点日产诊断按钮:
+- 弹出报告 → 长按复制,发给开发者
+- 提示"重新采集" → 按提示用 ADB 重新采集(部分车机会拒绝应用内执行 `wm`/`dumpsys`,这是预期行为,详见 [诊断使用指南](docs/NISSAN_DIAGNOSTICS_USER_GUIDE.md))
+- 提示拒绝 → 说明本机识别不是日产车机,确认一下车型
 
-The app and the website source include English, Arabic, Russian, Ukrainian, Spanish, Simplified Chinese, Traditional Chinese (Taiwan), and Japanese. Traditional Chinese uses Taiwan wording; the app also recognizes Hong Kong/Macao and explicit Hant selections without claiming separate regional translations. Choose the app language in Settings; on Android 13+, it stays synchronized with Android’s per-app language setting. See the [Traditional Chinese guide](README.zh-TW.md) for installation, settings, troubleshooting, privacy and build instructions.
+## 当前状态(诚实声明)
 
-## Source and credits
+- 功能已实现:shared 模块 1786 个单元测试 0 失败,common 模块除 4 个 Windows 环境性失败外全绿;模拟器(Android 15,注入 NISSAN 标识)端到端验证通过
+- **实车验证尚未完成**:无线桥接的实机路径、真实 `ro.product.*` 值,都在等实车 ADB 转录
+- 本项目与 Apple 无关、未获 MFi 认证,沿用上游相同的配件身份方案与声明
 
-Based on [xcertplay](https://github.com/shilapi/xcertplay), GPL-3.0. The home/settings UI and website adapt [DiAuto](https://github.com/shihabal3amri/DiAuto), AGPL-3.0; that license is included in `docs/licenses`. Preserve those notices when distributing modifications. CarPlay and its icon belong to Apple Inc.; no Apple or BYD affiliation or endorsement is implied.
+## 分支说明
 
-This repository starts with a clean public source snapshot. Local research, tester reports and release-signing secrets are excluded. The complete source corresponding to the APK is provided with every release; experimental runtime identity assets are described separately in the build instructions and notices.
+| 分支 | 用途 |
+| --- | --- |
+| `main` | 上游镜像 + 已验收的日产适配合并;发版 APK 从这里打 tag |
+| `develop` | 日产适配集成线;上游同步先落这里,验证后再进 `main` |
+| `feat/nissan-teana-adaptation` | 日产天籁适配主开发线(当前全部成果在此) |
+| `hotfix` / `hotfix-*` | 针对上游问题的紧急修复(例如 #1071 无线连接修复) |
 
-## Local release packaging
+分支与合并规则详见 [docs/BRANCHING.md](docs/BRANCHING.md)。
 
-The release APK intentionally contains the experimental accessory identity. The Git repository and source archive exclude all accessory and Android signing keys; tests generate synthetic identities at runtime. Source/CI builds omit runtime identity assets by default. Local release builds explicitly select an external asset directory. Publishing the APK makes its bundled identity extractable; building locally does not preserve that identity's confidentiality.
+## 版本记录
+
+见 [CHANGELOG.md](CHANGELOG.md):顶部是本 fork 的日产版本条目,往下是上游 0.2.9–0.2.21 的完整变更与修复记录。
+
+## 构建与安装
+
+- 构建:[docs/BUILD.md](docs/BUILD.md)(需要 Android SDK + JDK 21,`./gradlew :mobile:assembleDebug`)
+- 安装与连接:[docs/INSTALL.md](docs/INSTALL.md)
+- 日产适配设计与验收材料:[docs/NISSAN_PORT_PLAN.md](docs/NISSAN_PORT_PLAN.md)、[docs/NISSAN_TEANA_ACCEPTANCE.md](docs/NISSAN_TEANA_ACCEPTANCE.md)
+
+## 许可
+
+本项目沿用上游 [DiPlay](https://github.com/shihabal3amri/DiPlay) 的 [GPL-3.0](LICENSE) 许可证。

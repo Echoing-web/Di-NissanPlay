@@ -952,4 +952,12 @@
     <string name="cluster_projection_shape_description">La pantalla partida mantiene junto al mapa la velocidad y el estado que el panel muestra normalmente; la pantalla completa deja que el mapa ocupe todo el panel. DiPlay fija la forma cada vez que aparece el mapa de CarPlay, que de lo contrario anula la forma elegida en el coche. Requiere ADB por red en la unidad principal.</string>
     <string name="settings_cluster_speedometer_album_color">Usar el color del álbum en el fondo del velocímetro</string>
     <string name="settings_cluster_speedometer_album_color_description">Iguala el color del borde del álbum con transiciones suaves. Conserva la opacidad elegida.</string>
-</resources>
+    <string name="settings_nissan_diagnostics">Diagnóstico de Nissan</string>
+    <string name="settings_nissan_diagnostics_recapture_title">Vuelve a capturar la entrada de diagnóstico</string>
+    <string name="settings_nissan_diagnostics_recapture_message">Algunas salidas de captura contienen señales de error:\n%1$s\nVuelve a ejecutar la captura por ADB en la unidad del coche (getprop, wm size, wm density, dumpsys display) e inténtalo de nuevo.</string>
+    <string name="settings_nissan_diagnostics_refusal_message">Este informe solo se genera en la unidad de Nissan. Esta vez no se capturó nada.</string>
+    <string name="settings_nissan_diagnostics_report_title">Informe de diagnóstico de Nissan</string>
+    <string name="settings_nissan_diagnostics_paste">Pegar la transcripción de diagnóstico</string>
+    <string name="settings_nissan_diagnostics_paste_dialog_title">Pegar la transcripción de diagnóstico</string>
+    <string name="settings_nissan_diagnostics_paste_confirm">Analizar la transcripción</string>
+    <string name="settings_nissan_diagnostics_paste_hint">Pega la transcripción recopilada con ADB en un PC. La transcripción necesita las líneas de etiqueta de sección wm size:, wm density: y dumpsys display:; la salida sin línea de etiqueta no se captura.</string></resources>

@@ -1001,4 +1001,12 @@
     <string name="cluster_projection_shape_description">يُبقي وضع نصف الشاشة السرعة وحالة السيارة اللتين تعرضهما اللوحة عادةً بجانب الخريطة؛ أما ملء الشاشة فتغطي الخريطة اللوحة بالكامل. يضبط DiPlay هذا الشكل عند ظهور خريطة CarPlay، وإلا فإنه يلغي الشكل المختار في السيارة. يتطلب ADB عبر الشبكة على وحدة القيادة.</string>
     <string name="settings_cluster_speedometer_album_color">استخدام لون الألبوم لخلفية عداد السرعة</string>
     <string name="settings_cluster_speedometer_album_color_description">يطابق لون إطار الألبوم بانتقالات سلسة مع الحفاظ على التعتيم المحدد.</string>
-</resources>
+    <string name="settings_nissan_diagnostics">تشخيص نيسان</string>
+    <string name="settings_nissan_diagnostics_recapture_title">أعد التقاط مدخلات التشخيص</string>
+    <string name="settings_nissan_diagnostics_recapture_message">تحتوي بعض مخرجات الالتقاط على إشارات فشل:\n%1$s\nأعد تشغيل الالتقاط عبر ADB على وحدة السيارة (getprop وwm size وwm density وdumpsys display) ثم حاول مرة أخرى.</string>
+    <string name="settings_nissan_diagnostics_refusal_message">يُنشأ هذا التقرير على وحدة نيسان فقط. لم يتم التقاط أي شيء هذه المرة.</string>
+    <string name="settings_nissan_diagnostics_report_title">تقرير تشخيص نيسان</string>
+    <string name="settings_nissan_diagnostics_paste">لصق نص التشخيص</string>
+    <string name="settings_nissan_diagnostics_paste_dialog_title">لصق نص التشخيص</string>
+    <string name="settings_nissan_diagnostics_paste_confirm">تحليل النص</string>
+    <string name="settings_nissan_diagnostics_paste_hint">الصق النص المُجمَّع عبر ADB على حاسوب. يحتاج النص إلى أسطر تسميات الأقسام wm size: وwm density: وdumpsys display:؛ المخرجات بلا سطر تسمية لن تُلتقط.</string></resources>

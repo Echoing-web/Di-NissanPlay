@@ -1054,4 +1054,12 @@
     <string name="cluster_projection_shape_description">小画面ではメーター本来の車速や状態表示が地図の横に残ります。全画面では地図がメーター全体を覆います。CarPlayの地図が表示されるとDiPlayがこの形態を設定するため、クルマ側で選んだナビモードは上書きされます。車載機のネットワークADBが必要です。</string>
     <string name="settings_cluster_speedometer_album_color">速度計の背景にアルバムの色を使用</string>
     <string name="settings_cluster_speedometer_album_color_description">アルバムの枠の色に滑らかに切り替わります。選択した不透明度は維持されます。</string>
-</resources>
+    <string name="settings_nissan_diagnostics">日産診断</string>
+    <string name="settings_nissan_diagnostics_recapture_title">診断入力を再取得</string>
+    <string name="settings_nissan_diagnostics_recapture_message">一部の取得出力に失敗シグナルが含まれています：\n%1$s\n車載機で ADB 取得（getprop、wm size、wm density、dumpsys display）を再実行してから、もう一度お試しください。</string>
+    <string name="settings_nissan_diagnostics_refusal_message">このレポートは日産車載機でのみ生成されます。今回は何も取得されていません。</string>
+    <string name="settings_nissan_diagnostics_report_title">日産診断レポート</string>
+    <string name="settings_nissan_diagnostics_paste">診断トランスクリプトを貼り付け</string>
+    <string name="settings_nissan_diagnostics_paste_dialog_title">診断トランスクリプトの貼り付け</string>
+    <string name="settings_nissan_diagnostics_paste_confirm">トランスクリプトを解析</string>
+    <string name="settings_nissan_diagnostics_paste_hint">PC で ADB により収集したトランスクリプトを貼り付けてください。トランスクリプトにはセクションラベル行 wm size:、wm density:、dumpsys display: が必要です。ラベル行のない出力は取得されません。</string></resources>

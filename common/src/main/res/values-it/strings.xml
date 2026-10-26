@@ -1042,4 +1042,12 @@
     <string name="cluster_projection_shape_description">Mezza schermata mantiene accanto alla mappa la velocità e lo stato che il quadro strumenti mostra normalmente; schermo intero lascia che la mappa occupi tutto il quadro. DiPlay imposta questa forma ogni volta che appare la mappa di CarPlay, che altrimenti annulla la forma scelta nell’auto. Richiede ADB in rete sull’unità principale.</string>
     <string name="settings_cluster_speedometer_album_color">Usa il colore dell’album per lo sfondo del tachimetro</string>
     <string name="settings_cluster_speedometer_album_color_description">Abbina il colore della cornice dell’album con transizioni fluide. Mantiene l’opacità selezionata.</string>
-</resources>
+    <string name="settings_nissan_diagnostics">Diagnostica Nissan</string>
+    <string name="settings_nissan_diagnostics_recapture_title">Acquisisci di nuovo l\'input di diagnostica</string>
+    <string name="settings_nissan_diagnostics_recapture_message">Alcuni output di acquisizione contengono segnali di errore:\n%1$s\nEsegui di nuovo l\'acquisizione tramite ADB sull\'unità dell\'auto (getprop, wm size, wm density, dumpsys display) e riprova.</string>
+    <string name="settings_nissan_diagnostics_refusal_message">Questo report viene generato solo sull\'unità Nissan. Questa volta non è stato acquisito nulla.</string>
+    <string name="settings_nissan_diagnostics_report_title">Report di diagnostica Nissan</string>
+    <string name="settings_nissan_diagnostics_paste">Incolla la trascrizione diagnostica</string>
+    <string name="settings_nissan_diagnostics_paste_dialog_title">Incolla la trascrizione diagnostica</string>
+    <string name="settings_nissan_diagnostics_paste_confirm">Analizza la trascrizione</string>
+    <string name="settings_nissan_diagnostics_paste_hint">Incolla la trascrizione raccolta con ADB su un PC. La trascrizione richiede le righe di etichetta delle sezioni wm size:, wm density: e dumpsys display:; l\'output senza riga di etichetta non viene acquisito.</string></resources>

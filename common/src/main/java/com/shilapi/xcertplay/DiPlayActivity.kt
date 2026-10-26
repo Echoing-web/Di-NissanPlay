@@ -80,6 +80,11 @@ import com.shilapi.xcertplay.network.CarHotspotSavedCredentials
 import com.shilapi.xcertplay.network.CarHotspotSettings
 import com.shilapi.xcertplay.network.CarHotspotTethering
 import com.shilapi.xcertplay.network.HotspotCredentials
+import com.shilapi.xcertplay.network.NissanDiagnosticsCapture
+import com.shilapi.xcertplay.network.NissanDiagnosticsCommandCapture
+import com.shilapi.xcertplay.network.NissanDiagnosticsShellCommandExecutor
+import com.shilapi.xcertplay.network.NissanDiagnosticsSource
+import com.shilapi.xcertplay.network.NissanHeadUnit
 import com.shilapi.xcertplay.network.WifiP2pChannels
 import com.shilapi.xcertplay.orchestration.ManualHotspotProvisioning
 import com.shilapi.xcertplay.orchestration.ManualHotspotSecurity
@@ -1770,6 +1775,19 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             card.addView(exportButton, matchButton(10, 60))
             card.addView(button(getString(R.string.choose_save_location), false) { chooseReportDestination() }, matchButton(10, 60))
             card.addView(button(getString(R.string.settings_report_on_phone), false) { openBackup(SettingsCategory.DIAGNOSTICS) }, matchButton(10, 60))
+            if (NissanHeadUnit.detected) {
+                card.addView(
+                    button(getString(R.string.settings_nissan_diagnostics), false) { showNissanDiagnostics() }
+                        .also { nissanDiagnosticsButton = it },
+                    matchButton(10, 60),
+                )
+                // PRD P0-1：车机内采集受 app uid 权限限制，车主可粘贴 PC 上 ADB 采集的
+                // 转录，与车机采集共用同一解析器与 Outcome 对话框。
+                card.addView(
+                    button(getString(R.string.settings_nissan_diagnostics_paste), false) { showNissanPasteDialog() },
+                    matchButton(10, 60),
+                )
+            }
             val destination = getString(R.string.reports_save_to_downloads_diplay)
             card.addView(label(destination + getString(R.string.nothing_is_sent_automatically_protocol_payloads_and_creden), 14, MUTED).apply { setPadding(0, dp(12), 0, 0) })
             toggle(card, getString(R.string.settings_fps_counter), getString(R.string.settings_fps_counter_description),
@@ -6065,6 +6083,143 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             .setView(ScrollView(appDialogContext()).apply { addView(body) })
             .setPositiveButton(getString(R.string.close), null).show()
     }
+
+    /** 日产诊断采集链路（车机侧执行真实只读命令）；测试注入桩替换。 */
+    internal var nissanDiagnosticsRunner: () -> NissanDiagnosticsCapture.Outcome = {
+        val output = NissanDiagnosticsCommandCapture(NissanDiagnosticsShellCommandExecutor()).run()
+        NissanDiagnosticsCapture.from(
+            output.getprop,
+            output.wmSize,
+            output.wmDensity,
+            output.dumpsysDisplay,
+            NissanDiagnosticsSource.ON_CAR,
+            NissanHeadUnit.detected,
+        )
+    }
+
+    /** 采集防重入：一次点击最多一组子进程（四条命令），重复点击直接忽略。 */
+    private val nissanDiagnosticsRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** 采集期间的进度反馈：按钮禁用，完成后恢复。 */
+    private var nissanDiagnosticsButton: android.widget.TextView? = null
+
+    private fun showNissanDiagnostics() {
+        if (!nissanDiagnosticsRunning.compareAndSet(false, true)) return
+        nissanDiagnosticsButton?.isEnabled = false
+        Thread {
+            val outcome = nissanDiagnosticsRunner()
+            runOnUiThread {
+                nissanDiagnosticsRunning.set(false)
+                nissanDiagnosticsButton?.isEnabled = true
+                // 采集最长约 40 秒；Activity 可能已销毁，此时不得再弹对话框。
+                if (!isFinishing && !isDestroyed) showNissanOutcomeDialog(outcome)
+            }
+        }.start()
+    }
+
+    private fun showNissanOutcomeDialog(outcome: NissanDiagnosticsCapture.Outcome) {
+        when (outcome) {
+            is NissanDiagnosticsCapture.Outcome.CaptureFailed ->
+                appDialogBuilder()
+                    .setTitle(getString(R.string.settings_nissan_diagnostics_recapture_title))
+                    .setMessage(
+                        getString(
+                            R.string.settings_nissan_diagnostics_recapture_message,
+                            outcome.signals.joinToString("\n"),
+                        ),
+                    )
+                    .setPositiveButton(getString(R.string.close), null)
+                    .show()
+            is NissanDiagnosticsCapture.Outcome.Undetected ->
+                appDialogBuilder()
+                    .setTitle(getString(R.string.settings_nissan_diagnostics))
+                    .setMessage(getString(R.string.settings_nissan_diagnostics_refusal_message))
+                    .setPositiveButton(getString(R.string.close), null)
+                    .show()
+            is NissanDiagnosticsCapture.Outcome.Reported ->
+                showNissanReportDialog(outcome.report.render())
+        }
+    }
+
+    private fun showNissanReportDialog(report: String) {
+        val body = column().apply { setPadding(dp(24), dp(12), dp(24), dp(12)) }
+        body.addView(label(getString(R.string.diagnostic_report_copy_hint), 14, MUTED))
+        body.addView(label(report, 13, TEXT).apply {
+            typeface = Typeface.MONOSPACE
+            setTextIsSelectable(true)
+        })
+        appDialogBuilder().setTitle(getString(R.string.settings_nissan_diagnostics_report_title))
+            .setView(ScrollView(appDialogContext()).apply { addView(body) })
+            .setPositiveButton(getString(R.string.close), null).show()
+    }
+
+    /** 粘贴解析防重入：确认后到结果对话框弹出前，同一时间只允许一次解析。 */
+    private val nissanPasteParsing = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** 粘贴转录入口（owner-reported）：多行等宽输入框；空白粘贴不解析，对话框保留供重试。 */
+    private fun showNissanPasteDialog() {
+        val input = EditText(appDialogContext()).apply {
+            setSingleLine(false)
+            minLines = 6
+            gravity = Gravity.TOP or Gravity.START
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            typeface = Typeface.MONOSPACE
+        }
+        val body = column().apply {
+            setPadding(dp(24), dp(12), dp(24), dp(12))
+            addView(label(getString(R.string.settings_nissan_diagnostics_paste_hint), 14, MUTED))
+            addView(
+                input,
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(NISSAN_PASTE_INPUT_HEIGHT_DP))
+                    .apply { topMargin = dp(CONTROL_GAP_DP) },
+            )
+        }
+        val dialog = appDialogBuilder()
+            .setTitle(getString(R.string.settings_nissan_diagnostics_paste_dialog_title))
+            .setView(body)
+            .setPositiveButton(getString(R.string.settings_nissan_diagnostics_paste_confirm), null)
+            .setNegativeButton(getString(R.string.cancel), null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val text = input.text.toString()
+                if (text.isBlank()) {
+                    // 空白粘贴不弹报告（BDD）：保留输入框并提示需要分区标签行的转录。
+                    input.error = getString(R.string.settings_nissan_diagnostics_paste_hint)
+                } else {
+                    dialog.dismiss()
+                    parsePastedNissanTranscript(text)
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    /**
+     * 解析粘贴的转录并复用三分支 Outcome 对话框。转录按单一采集段交给既有编排：
+     * detected=false 拒绝、含失败信号行提示重采、干净则 NissanDiagnosticsTextParser
+     * 解析（source=owner-reported）生成 15 行报告。
+     */
+    private fun parsePastedNissanTranscript(text: String) {
+        if (!nissanPasteParsing.compareAndSet(false, true)) return
+        Thread {
+            val outcome = NissanDiagnosticsCapture.from(
+                text,
+                null,
+                null,
+                null,
+                NissanDiagnosticsSource.OWNER_REPORTED,
+                NissanHeadUnit.detected,
+            )
+            runOnUiThread {
+                nissanPasteParsing.set(false)
+                // 转录可达 MB 级；Activity 可能已销毁，此时不得再弹对话框。
+                if (!isFinishing && !isDestroyed) showNissanOutcomeDialog(outcome)
+            }
+        }.start()
+    }
     private fun permissionHelp(title: String, body: String) {
         appDialogBuilder().setTitle(title).setMessage(body).setPositiveButton(getString(R.string.app_settings)) { _, _ ->
             openSystem(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
@@ -6938,6 +7093,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         private const val NOTE_LINE_GAP_DP = 4
         private const val NOTE_ATTACH_GAP_DP = 6
         private const val SETTINGS_BLOCK_GAP_DP = 16
+        /** Height of the paste-transcript input box, so long transcripts scroll instead of stretching the dialog. */
+        private const val NISSAN_PASTE_INPUT_HEIGHT_DP = 200
         /** The inset a control uses for its text, so a note below it lines up instead of starting at 0. */
         private const val SETTINGS_CONTROL_INSET_DP = 16
         /** Gap under an explanatory note, so it never touches the next control. */

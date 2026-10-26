@@ -1012,4 +1012,12 @@
     <string name="cluster_projection_shape_description">半屏会在仪表盘地图旁保留仪表原本的车速与状态信息；全屏则让地图占满整个仪表盘。CarPlay 地图出现时 DiPlay 会设置该形态，否则会覆盖你在车机上选好的导航模式。需要车机已授权网络 ADB。</string>
     <string name="settings_cluster_speedometer_album_color">速度表背景使用专辑颜色</string>
     <string name="settings_cluster_speedometer_album_color_description">平滑过渡到专辑边框的颜色，并保留所选的不透明度。</string>
-</resources>
+    <string name="settings_nissan_diagnostics">日产诊断</string>
+    <string name="settings_nissan_diagnostics_recapture_title">重新采集诊断输入</string>
+    <string name="settings_nissan_diagnostics_recapture_message">部分采集输出包含失败信号：\n%1$s\n请在车机上重新执行 ADB 采集（getprop、wm size、wm density、dumpsys display）后重试。</string>
+    <string name="settings_nissan_diagnostics_refusal_message">该报告仅在日产车机上生成，本次未采集任何内容。</string>
+    <string name="settings_nissan_diagnostics_report_title">日产诊断报告</string>
+    <string name="settings_nissan_diagnostics_paste">粘贴诊断转录</string>
+    <string name="settings_nissan_diagnostics_paste_dialog_title">粘贴诊断转录</string>
+    <string name="settings_nissan_diagnostics_paste_confirm">解析转录</string>
+    <string name="settings_nissan_diagnostics_paste_hint">粘贴在电脑上用 ADB 采集的转录。转录需带 wm size:、wm density:、dumpsys display: 分区标签行；没有标签行的输出不会被采集。</string></resources>

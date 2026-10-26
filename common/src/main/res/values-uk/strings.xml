@@ -964,4 +964,12 @@
     <string name="cluster_projection_shape_description">На пів екрана швидкість і стан, які панель зазвичай показує, залишаються поруч із картою; на весь екран карта займає всю панель. DiPlay задає цей вигляд щоразу, коли з&#8217;являється карта CarPlay, інакше він перекриває вигляд, вибраний в автомобілі. Потрібен ADB через мережу на головному пристрої.</string>
     <string name="settings_cluster_speedometer_album_color">Колір альбому для тла спідометра</string>
     <string name="settings_cluster_speedometer_album_color_description">Плавно змінює тло на колір рамки альбому. Зберігає вибрану непрозорість.</string>
-</resources>
+    <string name="settings_nissan_diagnostics">Діагностика Nissan</string>
+    <string name="settings_nissan_diagnostics_recapture_title">Заново зберіть діагностичні дані</string>
+    <string name="settings_nissan_diagnostics_recapture_message">У деяких результатах збору є сигнали помилок:\n%1$s\nВиконайте збір через ADB на головному пристрої автомобіля (getprop, wm size, wm density, dumpsys display) ще раз і спробуйте знову.</string>
+    <string name="settings_nissan_diagnostics_refusal_message">Цей звіт формується лише на головному пристрої Nissan. Цього разу дані не зібрано.</string>
+    <string name="settings_nissan_diagnostics_report_title">Звіт діагностики Nissan</string>
+    <string name="settings_nissan_diagnostics_paste">Вставити діагностичний транскрипт</string>
+    <string name="settings_nissan_diagnostics_paste_dialog_title">Вставлення діагностичного транскрипту</string>
+    <string name="settings_nissan_diagnostics_paste_confirm">Розібрати транскрипт</string>
+    <string name="settings_nissan_diagnostics_paste_hint">Вставте транскрипт, зібраний через ADB на ПК. Транскрипт має містити рядки міток розділів wm size:, wm density: і dumpsys display:; дані без рядка мітки не збираються.</string></resources>

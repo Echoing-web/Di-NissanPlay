@@ -1,59 +1,110 @@
-# Nissan Teana (2021 2.0T) head unit — research notes
+# 2021 款天籁 2.0T 车机调研
 
-Target car: China-market 2021 Nissan Teana 2.0T (seventh-generation Altima, VC-Turbo).
-Everything below comes from public owner reports and tutorials
-(汽车之家, Bilibili, 太平洋汽车, tool-vendor guides), cross-checked where possible.
-**Nothing has been measured on this project's own car yet**; items marked
-`TO CONFIRM` need an on-car check before code may depend on them.
+目标车辆：中国市场 2021 款日产天籁 2.0T（第七代 Altima，VC-Turbo）。
 
-## System
+本文只记录公开车主资料和待实车确认项。没有在本项目车辆上采集的数据，不得作为代码默认值或
+兼容性承诺。
 
-- The stock head unit runs 超智联 (Nissan Connect, "智联导航" firmware family), a closed
-  Android build. 2019–2021 units are commonly reported as Android 9-era; 2023 units are
-  reported as Android 10. `TO CONFIRM`: the exact Android and firmware version of the
-  2021 Teana 2.0T unit (设置 → 版本信息, and `adb shell getprop ro.build.version.*`).
-- Screen: 8-inch centre display, reported 1280x720. `TO CONFIRM` via
-  `adb shell wm size`.
-- No BYD DiLink services exist; every DiLink-gated route in DiPlay stays off. The
-  Geely-style lesson applies: vendor integrations hang off a head-unit check
-  (`NissanHeadUnit`) and nothing changes on other units.
+## 当前资料
 
-## Installing third-party APKs (owner-reported methods)
+- 车机属于日产超智联 / Nissan Connect 系列，为封闭式 Android 定制系统。
+- 2019—2021 款常被车主报告为 Android 9 时代系统；2023 款常被报告为 Android 10。
+  目标车的 Android 版本和固件版本仍待确认。
+- 中控屏常见规格为 8 英寸、1280 × 720；必须用 `adb shell wm size` 在实车核对。
+- 车机没有比亚迪 DiLink 服务。日产专用路径必须单独受 `NissanHeadUnit` 闸门控制，不能复用
+  DiLink 检测结果。
 
-1. **Engineering mode + ADB (recommended for this port).** In 系统设置 → 版本信息,
-   long-press the three lines bottom-to-top (2 s each) to open the engineering/diagnostic
-   menu (the exact gesture differs slightly by model year), enable ADB. Wireless ADB on
-   port 5555 is reported to work on 2019–2023 units; `adb connect <car-ip>:5555` then
-   `adb install` is the standard route the community uses.
-2. **U-disk installer.** FAT32 U-disk with a market APK (当贝市场极速版 / 沙发管家车载版),
-   opened from the stock file manager after allowing unknown sources.
-3. **Hotspot push.** Turn on the head unit's own hotspot, join it from the phone, push the
-   APK with 悟空遥控器.
+## 第三方 APK 安装线索
 
-Root: public videos describe root for the 2021 units (轩逸/天籁/逍客/奇骏). This port does
-not require root; ADB install is enough. Root may affect the warranty and is out of scope.
+1. 在系统设置的版本信息页进入工程 / 诊断菜单并打开 ADB；社区资料称部分 2019—2023 款支持
+   无线 ADB `5555` 端口。该操作的入口、授权和端口必须在目标车上确认。
+2. 使用 FAT32 U 盘和车机文件管理器安装 APK，需要车机允许未知来源。
+3. 使用车机热点与手机配对，再通过局域网推送 APK。该方式依赖第三方工具和车机权限。
 
-## What this means for DiPlay
+本项目不要求 root。root 可能影响保修，属于范围外事项。
 
-- DiPlay installs as a normal APK (Android 7.0+ / API 24+); the Android 9 Wi-Fi Direct
-  legacy path and the "driver turns the car hotspot on in car settings" behaviour apply.
-- Connection transport options on this unit, in the order worth trying:
-  1. USB (data port required) — `TO CONFIRM` the Teana's USB port does data, not only charging.
-  2. Existing Wi-Fi / same LAN (docs/EXISTING_WIFI.md) — phone and head unit join the same
-     external router (e.g. phone hotspot joined by the head unit).
-  3. Wi-Fi Direct — subject to the Android 9 limits in docs/ANDROID9_WIFI_DIRECT.md.
-  4. Car hotspot as the CarPlay network — the head unit's hotspot is 2.4 GHz on most of
-     these units; usable but more likely to stutter.
-- Bluetooth caveat from upstream docs: wireless CarPlay cannot start on a unit whose maker
-  keeps calls/music on its own Bluetooth module instead of Android's. The 超智联 units pair
-  phones in their own Bluetooth UI, so this risk is real; `TO CONFIRM` whether Android's
-  Bluetooth stack sees the pairing. USB sidesteps it.
+## 同型号车主公开数据（2026-10-25 网络采集）
 
-## On-car checklist (fills the TO CONFIRM items)
+以下全部来自其他车主在公开渠道发布的同款/同平台车机数据，未经本项目车辆实车核验，
+只能用于提出验证假设，不得写入代码默认值或 `NissanHeadUnit.KNOWN_UNIT_IDENTIFIERS`。
 
-Run over `adb connect <car-ip>:5555` and record in the diagnostic report:
+### 平台与固件标识
 
-```
+- 2021 款天籁 2.0 舒适版车主实测（智能电视网 znds 帖 1245642）：
+  软件版本 `NTDA3_P330`，硬件版本 `NTDA3_BOARD_S02`，原车高德 V2.x。
+- `NTDA3-BOARD-S02` 同一硬件串在 19/20 款轩逸、奇骏、天籁、蓝鸟、逍客、劲客的车主帖中
+  均有出现（汽车之家帖 105350613）。NTDA3 平台并非天籁独占。
+- 智联系固件版本谱系（车主帖汇总）：P130 → P150 → P170 → P180/P240/P260/P270/P280 →
+  P320/P330/P340/P350/P360。车型对应关系各帖说法不一，必须实车核实。
+  - 21 款轩逸：P130 需先升 P150（知乎 p/688819241）。
+  - 19-20 款 P130 需先升 P150；21-23 款 P180 以上需先降到 P170（汽车之家帖 108994248）。
+  - 20 款有原版 P320/P350/P360 固件包流传（知乎 p/500299478）。
+- 注意区分三代系统，勿混用资料：18 款天籁/轩逸为 DA4 平台（N2122→N2152B）；
+  19-20 款部分车型为博世 Linux 主机（固件 AI_PRJ_RN_AIVI_18.51V22，带 CarPlay）；
+  21 款超智联才是本项目的 NTDA3 / P 系固件 Android 机型。
+
+### Android 版本与屏幕
+
+- 社区工具与视频普遍描述 19-21 款智联/超智联为"安卓 9-10"：B 站无线 ADB 工具
+  （BV1Q5EFzmEoZ）宣称支持智联安卓 9-10；B 站 CCS2.0 升级视频（BV1ywYkzoE8L）称天籁/轩逸
+  "安卓 10 全新升级"；一份 22 款天籁/轩逸 HiCar 升级文档要求 Android 10。
+  目标车的版本仍以 `ro.build.version.release` 为准。
+- 2021 款天籁官方配置为 8 英寸触控屏，`手机互联/映射` 官方标注为 "-"
+  （即不带 CarPlay/Android Auto）。分辨率未公开，仍需 `wm size` 实测。
+
+### ADB 接入（同型号车主实测路径）
+
+1. 系统诊断入口：设置 → 版本信息，从下往上依次长按三行（每行约 2 秒）进入
+   （汽车之家帖 94285692，打火后操作以免亏电）。
+2. 有线 + 无线组合（znds 帖 1245642，21 款天籁 2.0 舒适版实测）：车机开 USB 调试 →
+   USB 双公头线连电脑 → `adb devices` 确认 → `adb tcpip 5555` → 车机 WiFi 连手机热点，
+   手机端"甲壳虫ADB工具 1.28"凭车机 IP 无线连接。
+   退出时必须点"USB mode"退出调试，否则 U 盘音乐无法播放；再次操作需重走全流程。
+3. 吾爱破解帖 1759868（21 款天籁/轩逸"车机解锁"）：存在一条"固件高于 P170 需先刷回
+   P170 固件才能解锁 USB 调试"的路线，依赖 U 盘固件包（update.zip、mcu.bin 等）和
+   车机自动弹出的升级界面。刷写会改变车机状态，本文档只作研究风险记录，不给出也不
+   建议执行任何刷写步骤。22 年产车机需拆机走 Mini USB。
+   有车主反馈其 21/22 款停在 P170"养老"，智联远程功能正常。
+4. 拨号盘 `*#*#888` + 密码 `183201` 进工程模式开 ADB SWITCH 的说法来自日产 N6/8155
+   平台车友，未见于 NTDA3 平台，参考价值存疑。
+
+### ADB 可行操作与已知副作用（52pojie 帖 1759868 及回帖）
+
+- 系统预装应用无法 `adb uninstall`；车主做法是用 `adb shell rm` 删除原厂高德的
+  应用目录和数据目录后，重装同包名同签名的修改版。删除预装应用超出本项目范围，
+  具体目录与命令仅作研究记录，不构成可执行步骤。
+- 可禁用原厂桌面换用第三方启动器（回帖推荐低资源的 AGAMA Car Launcher），
+  可屏蔽 OTA 升级提示，可装 autokit + CarPlay 盒子实现无线 CarPlay。
+- "共存版"应用（与原车同功能的共存安装）已知问题：导航声音与多媒体声音无法切换调节、
+  共存酷我不支持方控切歌、仪表盘不显示歌曲信息、状态栏歌曲名缺失、分辨率不匹配。
+  这些正是 DiPlay 适配要主动核验的类别（音频通道、方控、状态栏、分辨率）。
+
+### 对适配的初步启示（基于公开数据，待实车确认）
+
+- 无线 ADB 5555 在同款车机上已被车主跑通，Phase 1 实车采集清单（getprop / wm size /
+  dumpsys display）按计划可行。
+- 第三方启动器与删改预装应用在同平台上均有成功案例，DiPlay 以框架形态接入具备先例；
+  但共存版音频通道与方控问题是同类改造的已知坑，connection/音源切换测试要前置。
+- 刷 P170 会改变固件并可能影响 OTA 与保修；在本项目坚持"不 root、不刷机"的前提下，
+  仅当实车固件已被官方升级到封堵调试口的版本时才需要重新评估。
+
+## 对 DiPlay 适配的影响
+
+建议按以下顺序验证连接方式：
+
+1. USB 数据连接：先确认天籁 USB 口支持数据而不是仅充电。
+2. 同一局域网：车机和手机加入同一个外部路由器或手机热点。
+3. Wi-Fi Direct：受 Android 9 的系统限制影响。
+4. 车机热点：可作为 CarPlay 网络，但 2.4 GHz 和车机实现可能增加卡顿风险。
+
+无线 CarPlay 还要确认车机蓝牙是否由 Android 蓝牙栈管理。若电话和音乐由原厂蓝牙模块独占，
+无线模式可能无法完整工作；USB 模式可以绕开该风险。
+
+## 实车采集清单
+
+通过已授权的 ADB 连接后，记录诊断报告中的以下输出：
+
+```text
 adb shell getprop ro.product.device ro.product.model ro.product.manufacturer ro.product.brand
 adb shell getprop ro.build.version.release ro.build.version.sdk
 adb shell wm size && adb shell wm density
@@ -61,17 +112,127 @@ adb shell dumpsys display | findstr -i displayId
 adb shell getprop | findstr -i "nissan model hardware"
 ```
 
-The `ro.product.*` values extend `NissanHeadUnit.KNOWN_UNIT_IDENTIFIERS`; the screen size
-picks the resolution preset in Settings → Display.
+只有采集到的 `ro.product.*` 才能扩充 `NissanHeadUnit.KNOWN_UNIT_IDENTIFIERS`。屏幕尺寸用于
+显示设置预设，不能由公开资料直接写死。
 
-## Sources
+## 公开资料来源
 
-Owner-reported, not measured by this project:
+- 汽车之家：日产智联屏（19—21 款）安装应用方法，`club.autohome.com.cn` 车友论坛。
+- 哔哩哔哩：21 款日产智联导航获取 root、日产无线 ADB、23 款 Android 10 安装第三方软件等
+  车主视频。
+- 太平洋汽车：第三方应用安装说明，`pcauto.com.cn`。
 
-- 日产智联屏(19-21款)安装APP方法 — club.autohome.com.cn/bbs/thread-c-656-94285692-1.html
-- 21款日产智联导航获取Root权限 — bilibili.com/video/BV1nn4y1f7G6
-- 日产无线ADB工具（19-23款，安卓9-10，5555端口） — bilibili.com/video/BV1Q5EFzmEoZ
-- 23款天籁、轩逸安卓10系统升级安装三方软件 — bilibili.com/video/BV1wr421c7ox
-- U盘安装三方软件 — bilibili.com/video/BV1hs421N7rg
-- 悟空遥控器热点推送 — club.m.autohome.com.cn/bbs/thread/46db19c85f6bb05b/99322437-1.html
-- 第三方应用安装说明 — pcauto.com.cn/cxxj/3236/32365576.html
+### 2026-10-25 采集的新增来源
+
+- 智能电视网：[甲壳虫ADB无线连天籁车机装高德 V7.1](https://www.znds.com/tv-1245642-1-1.html)
+  （2021 款天籁 2.0 舒适版，NTDA3_P330 / NTDA3_BOARD_S02，`adb tcpip 5555` 实测）。
+- 吾爱破解：[21款天籁车机解锁](https://www.52pojie.cn/thread-1759868-1-1.html)
+  （P170 固件解锁 USB 调试、删原厂高德命令、共存版问题清单）。
+- 知乎：[19/20/21款智联屏 U 盘升级装第三方软件](https://zhuanlan.zhihu.com/p/688819241)、
+  [原厂固件 P320/P350/P360](https://zhuanlan.zhihu.com/p/500299478)。
+- 汽车之家：[19-21款菜鸟级安装APP方法](https://club.autohome.com.cn/bbs/thread-c-656-94285692-1.html)
+  （系统诊断入口）、[日产车机升级用Carlife](https://clubajax.autohome.com.cn/bbs/thread/16d0757b6878f8b4/108994248-1.html)
+  （P130→P150、P180 降 P170 规则）、[智联屏固件 P320/P360 讨论帖](https://club.m.autohome.com.cn/bbs/thread/46db19c85f6bb05b/99322437-1.html)。
+- 哔哩哔哩：[日产无线ADB工具（智联安卓9-10）](https://www.bilibili.com/video/BV1Q5EFzmEoZ)、
+  [日产智联 CCS2.0 系统安装三方软件](https://www.bilibili.com/video/BV1ywYkzoE8L)。
+
+网页内容可能失效或与具体固件不符；来源只用于提出验证假设，不直接证明目标车能力。
+
+## 证据矩阵与下一切片输入（2026-10-25）
+
+本章只汇总证据与产出下一切片的规格输入，不改变任何代码。当前会话无法直接加载汽车之家
+页面，相关条目保留为搜索摘要或帖子转述，不视为本会话已核验的原文。
+
+可信度口径：**高**=官方参数或多来源相互印证；**中**=单一来源车主实测或自洽教程；
+**低**=视频宣称、二手转述或搜索摘要。"实车验证"一列在目标车采集前一律为**否**。
+
+### A 组：2021 款天籁 NTDA3 平台（目标代际）
+
+| # | 事实或线索 | 来源 | 车型/年款 · 平台标识 | 证据类型 | 可信度 | 实车验证 | 可消费的代码或测试输入 | 风险与排除项 |
+|---|---|---|---|---|---|---|---|---|
+| A1 | 车机软件版本 `NTDA3_P330`、硬件版本 `NTDA3_BOARD_S02`，原车高德 V2.x | [znds 帖 1245642](https://www.znds.com/tv-1245642-1-1.html) | 2021 款天籁 2.0 舒适版 · NTDA3 | 车主实测（图文流程） | 中 | 否 | 候选平台串对照清单（仅文档）；诊断报告比对值 | 单一车主；2.0 舒适版未必代表 2.0T；禁止写入 `KNOWN_UNIT_IDENTIFIERS` |
+| A2 | USB 调试 → `adb tcpip 5555` → 车机连手机热点，手机端甲壳虫ADB 1.28 凭 IP 无线安装 APK；退出必须点"USB mode"，否则 U 盘音乐无法播放 | [znds 帖 1245642](https://www.znds.com/tv-1245642-1-1.html) | 2021 款天籁 2.0 舒适版 · NTDA3 | 车主实测 | 中 | 否 | 无线 ADB 端口假设 5555；连接向导文案素材；U 盘音乐副作用写进测试关注点 | 每次重连需重走全流程（车主抱怨点） |
+| A3 | 诊断入口：设置→版本信息，从下往上依次长按三行（每行约 2 秒）→ 系统诊断；诊断界面按左上/右上/左下角（每角 0.5-0.9 秒）→ USB 测试界面；**21 款点 USB TEST MODE**（19-20 款为 USB MODE）→ 显示 USB DEVICE MODE；ADB 安装包文件名不能含中文（缓存失败） | [汽车之家帖 94285692](https://club.autohome.com.cn/bbs/thread-c-656-94285692-1.html) | 19-21 款奇骏等（21 款差异为楼主注明） · NTDA3 代际 | 搜索摘要（帖子原文未核验） | 低 | 否 | Phase 1 实车操作假设；"21 款入口分支"作为待验证条件；打火后操作的提醒 | 按压节奏因固件而异；入口描述来自其他车型，天籁需复现 |
+| A4 | 原厂固件 P320、已知最新 P360；官方与 4S 无升级渠道；存在"刷改版 P3xx"与"调试模式 + ADB 不刷机"两条路线；刷改版有刷失败、倒车雷达失效、车型不匹配的案例 | [汽车之家帖 99322437](https://club.autohome.com.cn/bbs/thread/46db19c85f6bb05b/99322437-1.html) | 2020 款奇骏 2.0L · P320/P360（NTDA3 代际） | 搜索摘要/帖子转述 | 低 | 否 | 固件谱系背景；"不刷机优先"的决策依据 | 原文无法在本会话加载；刷机路线仅作风险记录，本项目禁止执行 |
+| A5 | 版本规则：19-20 款 P130 需先升 P150；**21-23 款 P180 以上需先降级 P170**；另一工程入口：设置-系统-关于，依次点硬件/软件/系统版本各 3 秒 → 左上/右上/左下角各 3 秒 → usb test mode；公对公线 + ADBDriverInstaller + 360 手机助手可识别车机直接装应用；"中控硬件配置有限，安装少量软件就好" | [汽车之家帖 108994248](https://club.autohome.com.cn/bbs/thread/16d0757b6878f8b4/108994248-1.html) | 19-23 款轩逸/奇骏/天籁/蓝鸟/逍客/劲客 · P1xx 谱系 | 搜索摘要/帖子转述 | 低 | 否 | 版本谱系矩阵；诊断入口第二种待验证假设；"硬件有限"→ 资源占用约束 | 原文无法在本会话加载；降级 P170 仅作研究记录；工具经迅雷群组分发，供应链不可信 |
+| A6 | 21 款天籁/轩逸"解锁"需刷回 P170；车主反馈 21/22 款停在 P170；原厂预装应用不能 adb 卸载、车主以 rm 删原厂高德后重装同包名同签名修改版；AGAMA Car Launcher 可替换原厂桌面；autokit + 盒子实现无线 CarPlay；共存版应用问题：导航/多媒体声音无法切换、方控切歌失效、仪表盘不显示歌曲、状态栏歌曲名缺失、分辨率不匹配 | [52pojie 帖 1759868](https://www.52pojie.cn/thread-1759868-1-1.html) | 21 款天籁/轩逸（22 年产需拆机 Mini USB） · P170 | 车主实测 + 回帖 | 中 | 否 | DiPlay 适配测试关注点清单（音频通道、方控、状态栏、分辨率）；启动器替换先例 | 刷写/删除步骤不进运行文档；22 款拆机要求不适用本项目 |
+| A7 | 2021 款天籁官方配置：8 英寸触控液晶屏；`手机互联/映射` 官方标注 "-"（不带 CarPlay/Android Auto） | [汽车之家配置表 48494](https://car.autohome.com.cn/config/spec/48494.html) | 2021 款天籁 · — | 官方参数转述 | 高 | 否 | 显示预设背景值；`wm size` 仍必须实测 | 分辨率官方未公开，1280x720 仅为传闻 |
+| A8 | 社区称智联/超智联为"安卓 9-10"；CCS2.0 升级视频称天籁/轩逸"安卓 10 全新升级"；22 款 HiCar 升级文档要求 Android 10 | [B站 BV1Q5EFzmEoZ](https://www.bilibili.com/video/BV1Q5EFzmEoZ)、[B站 BV1ywYkzoE8L](https://www.bilibili.com/video/BV1ywYkzoE8L)、[Scribd 857979993](https://www.scribd.com/document/857979993/) | 19-22 款多车型 · — | 视频或工具宣称 | 低 | 否 | 仅维持"Android 9 或 10"双假设，SDK 判断按两者取保守值 | 不得作为版本默认值；无任何实测 getprop 输出佐证 |
+
+### B 组：NTDA3 平台兄弟车型（19-20 款，外推证据）
+
+| # | 事实或线索 | 来源 | 车型/年款 · 平台标识 | 证据类型 | 可信度 | 实车验证 | 可消费的代码或测试输入 | 风险与排除项 |
+|---|---|---|---|---|---|---|---|---|
+| B1 | `NTDA3-BOARD-S02` 适用 2019/20 款轩逸、奇骏、天籁、蓝鸟、逍客、劲客；U 盘 FAT32 升级后在"日产智联"里用小白文件管理器装应用 | [汽车之家帖 105350613](https://club.autohome.com.cn/bbs/thread/abe193de07ec7aac/105350613-1.html) | 19/20 款多车型 · NTDA3-BOARD-S02 | 搜索摘要/帖子转述 | 低 | 否 | 平台串跨车型复用的待验证假设；"确认板串再操作"的流程 | 原文无法在本会话加载；固件经公众号分发，供应链不可信；21 款是否同板串需实车对照 |
+
+### C 组：不同代际资料（明确排除，不得消费）
+
+| # | 事实或线索 | 来源 | 车型/年款 · 平台标识 | 证据类型 | 可信度 | 实车验证 | 可消费的代码或测试输入 | 风险与排除项 |
+|---|---|---|---|---|---|---|---|---|
+| C1 | 18 款天籁/轩逸原厂车机为 DA4 平台，刷机版本 N2122→N2152B，装新版高德/第三方软件 | [抖音视频](https://www.douyin.com/shipin/7284551026076780599)（搜索摘要） | 18 款天籁/轩逸 · DA4 / N2xxx | 视频或工具宣称 | 低 | 否 | 无（仅用于代际区分） | 与 NTDA3 不同代，全部操作细节不消费 |
+| C2 | 19-20 款部分车型为博世 Linux 主机（固件 AI_PRJ_RN_AIVI_18.51V22），原生 CarPlay 被官方禁用，社区尝试恢复 | [汽车之家帖 95231870](https://club.m.autohome.com.cn/bbs/thread/90be1d84d59bdbce/95231870-18.html)（搜索摘要） | 19-20 款（含天籁） · 博世 Linux | 帖子转述 | 中 | 否 | 无（仅用于代际区分） | Linux 系统，与本项目 Android 假设互斥 |
+
+### D 组：未证实项与风险记录（禁止进入运行文档）
+
+| # | 事实或线索 | 来源 | 车型/年款 · 平台标识 | 证据类型 | 可信度 | 实车验证 | 可消费的代码或测试输入 | 风险与排除项 |
+|---|---|---|---|---|---|---|---|---|
+| D1 | 拨号盘输入 `*#*#888` + 密码 `183201` 进入工程模式开 ADB SWITCH | [抖音视频](https://www.douyin.com/shipin/7281532976091940920)（搜索摘要） | 日产 N6/8155 平台 | 搜索摘要 | 低（**未证实**） | 否 | 无 | **禁止写入运行文档、代码或诊断步骤**；平台与本项目不同，未在 NTDA3 上出现 |
+| D2 | 各类固件下载链接（123 云盘/百度网盘/夸克/迅雷群组/公众号）、update.zip、mcu.bin、Autoboot_Utility、降级 P170、删除原厂应用 | 各来源帖（A4/A5/A6/B1） | 多车型 · — | 网盘分发 | 低 | 否 | 无 | 仅作研究风险记录：第三方分发供应链不可信；本项目不刷机、不降级、不删除预装应用，不提供可执行刷写或删除步骤 |
+
+### 矩阵冲突项
+
+1. **同款车固件版本矛盾**：znds 的 2021 款天籁 2.0 舒适版报告 `NTDA3_P330`，52pojie 回帖称
+   "21/22 款天籁导航停留在 P170"。可能解释：配置/出厂批次差异，或 P1xx 是调试解锁基线、
+   P3xx 是智联大版本，但无公开资料能裁定。实车读版本是唯一仲裁手段。
+2. **工程入口两套按法**：帖 94285692（版本信息页从下往上三行 + 诊断界面三角 0.5-0.9 秒）
+   与帖 108994248（关于页硬件/软件/系统版本各 3 秒 + 三角各 3 秒）不一致，可能对应不同
+   固件代际。实车按 A3 优先、A5 备选。
+3. **SoC 无定论**：凤凰网称超智联（Ariya 代）用高通骁龙 855 车规魔改；2021 天籁 8 英寸机
+   无任何拆解证据。矩阵不填 SoC 字段。
+4. **Android 9 vs 10**：所有来源均为宣称，无实测输出。按 A8 双假设处理。
+
+### 下一切片最小输入：只读车机信息采集 / 诊断报告
+
+**目标**：在 `NissanHeadUnit.detected == true` 时，把诊断输入（人工从实车 ADB 粘贴的
+getprop / `wm size` / `wm density` / `dumpsys display` 摘要）解析为一份只读诊断报告，
+标注每项值的来源（`on-car` 或 `owner-reported`）。不改变车机任何状态。
+
+**非目标**：热点、启动器、方控、音频改造；不扩充 `KNOWN_UNIT_IDENTIFIERS`；不刷机、
+不删除应用、不改系统设置；不做 CarPlay/盒子集成。
+
+**输入字段**：现有五个 `Build.*` 标识（只读）；`ro.build.version.release`、
+`ro.build.version.sdk`、`wm size`、`wm density`、`dumpsys display` 摘要——全部作为
+外部诊断输入文本进入，不在运行代码里硬编码任何默认值。
+
+**输出证据**：纯数据诊断报告（固定顺序的 15 行 `key=value` 字段值 + 来源标记 + 原始字符串）。
+报告不包含时间戳；`ro.build.version.release` 和 `ro.build.version.sdk` 保持原始字段名。
+`wm size`
+缺失时输出 `unknown`，绝不回填 1280x720 等公开传闻值；报告供人对照矩阵，不进入
+运行常量。
+
+**BDD 场景（Given/When/Then）**：
+
+- **Given** `detected == true` 且诊断输入含 `ro.build.version.release=10`
+  **When** 生成诊断报告 **Then** 报告包含 `ro.build.version.release=10` 且来源标记 `on-car`
+- **Given** 诊断输入缺少 `wm size`
+  **When** 生成诊断报告 **Then** 屏幕字段为 `unknown`，不得输出任何公开资料值
+- **Given** `detected == false`
+  **When** 请求生成日产诊断报告 **Then** 拒绝生成，不输出报告
+- **Given** 诊断输入包含 `NTDA3_P330`
+  **When** 生成诊断报告 **Then** 平台标识原样进入报告，且
+  `KNOWN_UNIT_IDENTIFIERS` 保持为空（报告不等于识别）
+
+**应先失败的单元测试断言（TDD，新报告类为纯函数、不依赖 Android 框架）**：
+
+1. 缺失字段输出 `unknown`，断言报告中不出现 `1280x720`、`NTDA3`、`P1xx` 等公开资料
+   值作为默认。
+2. `detected == false` 时报告构造被拒绝（抛异常或返回拒绝结果）。
+3. 报告生成前后 `KNOWN_UNIT_IDENTIFIERS` 不变（仍为空列表）。
+4. 平台串匹配大小写不敏感，但仅用于报告标注，不参与 `detected` 判定。
+
+**完成判据**：上述断言先红后绿且相关定向测试通过；BDD / SDD 字段契约与实现一致；
+运行代码中不出现 `NTDA3`、`P1xx` 等公开资料字符串常量。
+
+**当前阻塞**：本切片的解析与报告逻辑可先行开发，但任何"字段值确认"都阻塞在缺少
+目标车的真实 `getprop` / `wm size` / `dumpsys display` 采集——阻塞是实车数据缺位，
+不是公开资料不足。矩阵与本章不解除 `NISSAN_TEANA_SDD.md` 的证据升级条件。
